@@ -1,0 +1,56 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: circleci/node:chakracore-8.11-browsers-legacy
+    working_directory: ~/
+    steps:
+        - restore_cache:
+            key: v1-dist-{{ .Environment.CIRCLE_BRANCH }}-{{ .Environment.CIRCLE_SHA1 }}
+        - run:
+            name: clone repo
+            command: git clone https://github.com/i-takuya/fire-angular.git
+        - run:
+            name: npm install
+            command: cd fire-angular; npm install
+        - run:
+            name: replace secret to API
+            command: cd fire-angular; sed -i -e "s/APIKEY/$APIKEY/g" src/environments/environment.ts
+        - run: 
+            name: replace secret to messagingSenderId
+            command: cd fire-angular; sed -i -e "s/MSID/$MSID/g" src/environments/environment.ts
+        - run: 
+            name: build app
+            command: cd fire-angular; npm run-script build
+        - save_cache:
+            key: v1-dist-{{ .Environment.CIRCLE_BRANCH }}-{{ .Environment.CIRCLE_SHA1 }}
+            paths:
+                - fire-angular/dist
+                - fire-angular/package.json
+                - fire-angular/firebase.json
+                - fire-angular/.firebaserc
+  deploy:
+    docker:
+      - image: circleci/node:chakracore-8.11-browsers-legacy
+    working_directory: ~/
+    steps:
+        - restore_cache:
+            key: v1-dist-{{ .Environment.CIRCLE_BRANCH }}-{{ .Environment.CIRCLE_SHA1 }}
+        - run:
+            name: Install Firebase
+            command: cd fire-angular; npm install --save-dev firebase-tools
+        - run:
+            name: Deploy Master to Firebase
+            command: cd fire-angular; npm run firebase-deploy -- --token=$FIREBASE_TOKEN
+
+workflows:
+  version: 2
+  deploy:
+    jobs:
+      - build
+      - deploy:
+          requires:
+            - build
+          filters:
+              branches:
+                  only: master

@@ -1,0 +1,6 @@
+{{title}}
+<ul>
+  <li class="text" *ngFor="let item of items | async">
+    {{item.id}}: {{item.name}}
+  </li>
+</ul>
